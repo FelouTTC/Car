@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>JS Game</title>
+		<meta charset="utf-8">
+		<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' />
+		<style>
+body, html
+{
+	width: 100%;
+	height: 100%;
+	padding: 0px;
+	margin: 0px;
+	overflow: hidden;
+}
+
+.wrapper
+{
+	width: 100%;
+	height: 100%;
+}
+
+.canvas
+{
+	width: 100%;
+	height: 100%;
+	background: #000;
+}
+		</style>
+	</head>
+	<body>
+		<div class="wrapper">
+			<canvas width="0" height="0" class="canvas" id="canvas"></canvas>
+		</div>
+
+		<script>
+class Road
+{
+	constructor(image, y)
+	{
+		this.x = 0;
+		this.y = y;
+		this.loaded = false;
+
+		this.image = new Image();
+		
+		var obj = this;
+
+		this.image.addEventListener("load", function () { obj.loaded = true; });
+
+		this.image.src = image;
+	}
+
+	Update(road) 
+	{
+		this.y += speed; 
+
+		if(this.y > window.innerHeight) 
+		{
+			this.y = road.y - canvas.width + speed; 
+		}
+	}
+}
+
+class Car
+{
+	constructor(image, x, y, isPlayer)
+	{
+		this.x = x;
+		this.y = y;
+		this.loaded = false;
+		this.dead = false;
+		this.isPlayer = isPlayer;
+
+		this.image = new Image();
+
+		var obj = this;
+
+		this.image.addEventListener("load", function () { obj.loaded = true; });
+
+		this.image.src = image;
+	}
+
+	Update()
+	{
+		if(!this.isPlayer)
+		{
+			this.y += speed;
+		}
+
+		if(this.y > canvas.height + 50)
+		{
+			this.dead = true;
+		}
+	}
+
+	Collide(car)
+	{
+		var hit = false;
+
+		if(this.y < car.y + car.image.height * scale && this.y + this.image.height * scale > car.y) 
+		{
+			if(this.x + this.image.width * scale > car.x && this.x < car.x + car.image.width * scale) 
+			{
+				hit = true;
+			}
+		}
+
+		return hit;
+	}
+
+	Move(v, d) 
+	{
+		if(v == "x") 
+		{
+			d *= 2;
+
+			this.x += d;
+
+			
+			if(this.x + this.image.width * scale > canvas.width)
+			{
+				this.x -= d; 
+			}
+	
+			if(this.x < 0)
+			{
+				this.x = 0;
+			}
+		}
+		else 
+		{
+			this.y += d;
+
+			if(this.y + this.image.height * scale > canvas.height)
+			{
+				this.y -= d;
+			}
+
+			if(this.y < 0)
+			{
+				this.y = 0;
+			}
+		}
+		
+	}
+}
+
+
+const UPDATE_TIME = 1000 / 60;
+
+var timer = null;
+
+var canvas = document.getElementById("canvas"); 
+var ctx = canvas.getContext("2d"); 
+
+var scale = 0.1; 
+
+Resize(); 
+
+window.addEventListener("resize", Resize); 
+
+
+canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); return false; }); 
+
+window.addEventListener("keydown", function (e) { KeyDown(e); });
+
+var objects = []; 
+
+var roads = 
+[
+	new Road("https://i.ibb.co/ZYvh86Y/Aerial-view-over-the-road-and-highway.jpg", 0),
+	new Road("https://i.ibb.co/ZYvh86Y/Aerial-view-over-the-road-and-highway.jpg", canvas.width)
+]; 
+
+var player = new Car("https://i.ibb.co/QCQ8PwD/car.png", canvas.width / 2, canvas.height / 2, true); 
+
+
+var speed = 10;
+
+Start();
+
+
+function Start()
+{
+	if(!player.dead)
+	{
+		timer = setInterval(Update, UPDATE_TIME); 
+	}
+	
+}
+ 
+function Stop()
+{
+	clearInterval(timer); 
+	timer = null;
+	setTimeout(() => { window.location.reload(); }, 3000);
+}
+
+function Update() 
+{
+	roads[0].Update(roads[1]);
+	roads[1].Update(roads[0]);
+
+	if(RandomInteger(0, 10000) > 9700) 
+	{
+		objects.push(new Car("https://i.ibb.co/xfrxMkJ/car-red.png", RandomInteger(30, canvas.width - 50), RandomInteger(250, 400) * -1, false));
+	}
+
+	player.Update();
+
+	if(player.dead)
+	{
+		soundClick();
+		Stop();
+	}
+
+	var isDead = false; 
+
+	for(var i = 0; i < objects.length; i++)
+	{
+		objects[i].Update();
+
+		if(objects[i].dead)
+		{
+			isDead = true;
+		}
+	}
+
+	if(isDead)
+	{
+		objects.shift();
+	}
+
+	var hit = false;
+
+	for(var i = 0; i < objects.length; i++)
+	{
+		hit = player.Collide(objects[i]);
+
+		if(hit)
+		{
+			soundClick();
+			Stop();
+			break;
+		}
+	}
+
+	Draw();
+}
+
+function Draw() 
+{
+	ctx.clearRect(0, 0, canvas.width, canvas.height); 
+
+	for(var i = 0; i < roads.length; i++)
+	{
+		ctx.drawImage
+		(
+			roads[i].image, 
+			0, 
+			0, 
+			roads[i].image.width, 
+			roads[i].image.height, 
+			roads[i].x, 
+			roads[i].y, 
+			canvas.width, 
+			canvas.width 
+		);
+	}
+
+	DrawCar(player);
+
+	for(var i = 0; i < objects.length; i++)
+	{
+		DrawCar(objects[i]);
+	}
+}
+
+function DrawCar(car)
+{
+	ctx.drawImage
+	(
+		car.image, 
+		0, 
+		0, 
+		car.image.width, 
+		car.image.height, 
+		car.x, 
+		car.y, 
+		car.image.width * scale, 
+		car.image.height * scale 
+	);
+}
+
+function KeyDown(e)
+{
+	switch(e.keyCode)
+	{
+		case 65: 
+			player.Move("x", -speed);
+			break;
+
+		case 68: 
+			player.Move("x", speed);
+			break;
+
+		case 87:
+			player.Move("y", -speed);
+			break;
+
+		case 83:
+			player.Move("y", speed);
+			break;
+
+		case 27:
+			if(timer == null)
+			{
+				Start();
+			}
+			else
+			{
+				Stop();
+			}
+			break;
+	}
+}
+
+function Resize()
+{
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
+}
+
+function RandomInteger(min, max) 
+{
+	let rand = min - 0.5 + Math.random() * (max - min + 1);
+	return Math.round(rand);
+}
+
+function soundClick() {
+	audio = new Audio();
+	audio.src = 'http://psv4.userapi.com/c619730//u321186699/audiomsg/d3/28d6b6a91b.mp3';
+	audio.autoplay = true;
+}
+		</script>
+	</body>
+</html>
